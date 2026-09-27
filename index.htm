@@ -1,25 +1,48 @@
 <html><head><base href="https://websim.ai">
   <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, minimum-scale=1, user-scalable=no, viewport-fit=cover">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="theme-color" content="#05070d">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <title>Coin Ball</title>
   <style>
-    html, body { margin: 0; overflow: hidden; background:#000; }
-    canvas { width: 100%; height: 100%; display:block; }
-    * { box-sizing: border-box; user-select: none; -webkit-user-select: none; -webkit-tap-highlight-color: transparent; }
+    :root {
+      --accent: #7cffb2;
+      --accent2: #6ea8ff;
+      --panel-bg: rgba(20, 26, 46, 0.55);
+      --panel-border: rgba(255,255,255,0.14);
+      --safe-t: env(safe-area-inset-top, 0px);
+      --safe-b: env(safe-area-inset-bottom, 0px);
+      --safe-l: env(safe-area-inset-left, 0px);
+      --safe-r: env(safe-area-inset-right, 0px);
+    }
+    html, body {
+      margin: 0;
+      height: 100%;
+      overflow: hidden;
+      background:#000;
+      overscroll-behavior: none;
+      touch-action: none;
+      -webkit-text-size-adjust: 100%;
+    }
+    canvas { width: 100%; height: 100%; display:block; touch-action: none; }
+    * {
+      box-sizing: border-box;
+      user-select: none;
+      -webkit-user-select: none;
+      -webkit-tap-highlight-color: transparent;
+      -webkit-touch-callout: none;
+      font-family: 'Poppins', Arial, sans-serif;
+    }
+    svg { display: block; }
+    .icon { flex-shrink: 0; }
 
     #hud {
       display: none;
-    }
-    #instructions {
-      position: absolute;
-      top: 10px;
-      left: 10px;
-      color: white;
-      font-family: Arial, sans-serif;
-      font-size: 13px;
-      background-color: rgba(0,0,0,0.5);
-      padding: 10px;
-      border-radius: 5px;
-      max-width: 260px;
     }
     #winMessage {
       position: absolute;
@@ -48,90 +71,67 @@
       pointer-events: none;
       z-index: 9999;
     }
+    /* ---------- HUD chips (glass pills) ---------- */
+    .chip {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      background: rgba(15, 18, 32, 0.55);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      border: 1px solid rgba(255,255,255,0.16);
+      color: white;
+      font-size: 16px;
+      font-weight: 600;
+      padding: 8px 14px;
+      border-radius: 999px;
+      white-space: nowrap;
+      box-shadow: 0 4px 14px rgba(0,0,0,0.25);
+    }
+    .chip-btn {
+      cursor: pointer;
+      pointer-events: auto;
+      transition: transform 0.12s, background 0.15s;
+    }
+    .chip-btn:hover { background: rgba(35, 42, 68, 0.7); }
+    .chip-btn:active { transform: scale(0.94); }
+
     #topRight {
       position: absolute;
-      top: 10px;
-      right: 10px;
+      top: calc(10px + var(--safe-t));
+      right: calc(10px + var(--safe-r));
       display: flex;
       flex-direction: column;
       align-items: flex-end;
       gap: 8px;
       z-index: 20;
     }
-    #coinCount {
-      color: gold;
-      font-family: Arial, sans-serif;
-      font-size: 20px;
-      background-color: rgba(0,0,0,0.5);
-      padding: 8px 10px;
-      border-radius: 5px;
-      white-space: nowrap;
-    }
+    #coinCount { color: #ffd76a; }
     #levelInfo {
       position: absolute;
-      bottom: 10px;
-      left: 10px;
-      color: white;
-      font-family: Arial, sans-serif;
-      font-size: 20px;
-      background-color: rgba(0,0,0,0.5);
-      padding: 10px;
-      border-radius: 5px;
+      bottom: calc(10px + var(--safe-b));
+      left: calc(10px + var(--safe-l));
+      z-index: 20;
     }
     #credits {
       position: absolute;
-      bottom: 10px;
-      right: 10px;
-      color: white;
-      font-family: Arial, sans-serif;
-      font-size: 13px;
-      background-color: rgba(0,0,0,0.5);
-      padding: 8px;
-      border-radius: 5px;
+      bottom: calc(10px + var(--safe-b));
+      right: calc(10px + var(--safe-r));
+      color: rgba(255,255,255,0.6);
+      font-size: 12px;
+      padding: 6px 10px;
+      z-index: 15;
     }
     #timer {
       position: absolute;
-      top: 10px;
+      top: calc(10px + var(--safe-t));
       left: 50%;
       transform: translateX(-50%);
-      color: white;
-      font-family: Arial, sans-serif;
-      font-size: 22px;
-      background-color: rgba(0,0,0,0.5);
-      padding: 10px;
-      border-radius: 5px;
-    }
-    #pauseBtn {
-      color: white;
-      font-family: Arial, sans-serif;
-      font-size: 16px;
-      background-color: rgba(0,0,0,0.5);
-      padding: 6px 14px;
-      border-radius: 5px;
-      cursor: pointer;
-      pointer-events: auto;
-      border: 1px solid rgba(255,255,255,0.3);
-      white-space: nowrap;
-    }
-    #regenBtn {
-      color: white;
-      font-family: Arial, sans-serif;
-      font-size: 13px;
-      background-color: rgba(0,0,0,0.5);
-      padding: 6px 12px;
-      border-radius: 5px;
-      cursor: pointer;
-      white-space: nowrap;
-      pointer-events: auto;
-      border: 1px solid rgba(255,255,255,0.3);
+      z-index: 20;
     }
     @media (max-width: 700px) {
-      #instructions { font-size: 10px; max-width: 130px; padding: 6px; }
-      #timer { font-size: 14px; padding: 6px 8px; }
-      #coinCount { font-size: 14px; padding: 6px 8px; }
-      #levelInfo { font-size: 14px; padding: 6px 8px; }
-      #pauseBtn { font-size: 13px; padding: 5px 10px; }
-      #regenBtn { font-size: 11px; padding: 5px 8px; }
+      .chip { font-size: 13px; padding: 6px 10px; gap: 8px; }
+      .chip .icon { width: 15px; height: 15px; }
       #credits { display: none; }
     }
     @keyframes rainbow {
@@ -157,61 +157,74 @@
     .overlay {
       position: absolute;
       top: 0; left: 0; width: 100%; height: 100%;
-      background: radial-gradient(circle at 50% 20%, #1b2a4a 0%, #05070d 80%);
+      background:
+        radial-gradient(circle at 50% 15%, rgba(124,255,178,0.10) 0%, transparent 45%),
+        radial-gradient(circle at 50% 20%, #1b2a4a 0%, #05070d 80%);
       color: white;
-      font-family: Arial, sans-serif;
       display: flex;
       flex-direction: column;
       align-items: center;
       justify-content: center;
       z-index: 100;
       overflow-y: auto;
-      padding: 20px;
+      padding: calc(20px + var(--safe-t)) calc(20px + var(--safe-r)) calc(20px + var(--safe-b)) calc(20px + var(--safe-l));
     }
     .hidden { display: none !important; }
     .title {
-      font-size: 48px;
-      font-weight: bold;
+      font-size: clamp(34px, 8vw, 52px);
+      font-weight: 800;
+      letter-spacing: 1px;
       margin-bottom: 6px;
-      background: linear-gradient(90deg, red, orange, yellow, green, blue, indigo, violet);
+      background: linear-gradient(90deg, #ff5e5e, #ffb347, #ffe066, #7cffb2, #6ea8ff, #b380ff, #ff7ce0);
       -webkit-background-clip: text;
       background-clip: text;
       color: transparent;
       text-align: center;
     }
-    .subtitle { opacity: 0.75; margin-bottom: 24px; font-size: 14px; text-align:center; }
+    .subtitle { opacity: 0.7; margin-bottom: 24px; font-size: 14px; text-align:center; }
+    h3 { font-weight: 600; opacity: 0.9; letter-spacing: 0.3px; }
     .btn {
-      background: linear-gradient(180deg,#2e3f6b,#1a2440);
-      border: 1px solid #4a5f9e;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      background: linear-gradient(180deg, rgba(255,255,255,0.08), rgba(255,255,255,0.02)), #202a45;
+      border: 1px solid rgba(255,255,255,0.18);
       color: white;
-      font-size: 18px;
-      padding: 12px 26px;
-      margin: 8px;
-      border-radius: 8px;
+      font-size: 16px;
+      font-weight: 600;
+      padding: 13px 24px;
+      margin: 6px;
+      border-radius: 14px;
       cursor: pointer;
-      transition: transform 0.1s, background 0.2s;
-      min-width: 200px;
+      transition: transform 0.12s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+      min-width: 190px;
       text-align: center;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.28);
     }
-    .btn:hover { background: linear-gradient(180deg,#3d5390,#232f52); transform: scale(1.03); }
-    .btn:active { transform: scale(0.97); }
-    .btn.small { font-size: 14px; padding: 8px 16px; min-width: 120px; }
-    .btn.selected { border-color: #7cffb2; box-shadow: 0 0 12px #7cffb2; }
-    .row { display: flex; gap: 14px; flex-wrap: wrap; justify-content: center; }
+    .btn .icon { width: 20px; height: 20px; opacity: 0.95; }
+    .btn:hover { transform: translateY(-2px); border-color: rgba(255,255,255,0.32); box-shadow: 0 8px 22px rgba(0,0,0,0.35); }
+    .btn:active { transform: translateY(0) scale(0.96); }
+    .btn.small { font-size: 14px; padding: 10px 18px; min-width: 120px; }
+    .btn.selected { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(124,255,178,0.25), 0 6px 18px rgba(124,255,178,0.15); color: var(--accent); }
+    .row { display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; }
     .panel {
-      background: rgba(255,255,255,0.05);
-      border: 1px solid rgba(255,255,255,0.15);
-      border-radius: 12px;
-      padding: 20px;
+      background: var(--panel-bg);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid var(--panel-border);
+      border-radius: 20px;
+      padding: 24px;
       max-width: 900px;
       width: 100%;
       display: flex;
       flex-direction: column;
       align-items: center;
+      box-shadow: 0 12px 40px rgba(0,0,0,0.35);
     }
     #levelGrid {
       display: grid;
-      grid-template-columns: repeat(auto-fill, 90px);
+      grid-template-columns: repeat(auto-fill, 94px);
       gap: 10px;
       justify-content: center;
       max-height: 50vh;
@@ -222,66 +235,91 @@
     .levelTile {
       background: linear-gradient(180deg,#243252,#141b30);
       border: 1px solid #3c4f80;
-      border-radius: 8px;
+      border-radius: 14px;
       color: white;
-      padding: 10px 4px;
+      padding: 12px 6px;
       cursor: pointer;
       text-align: center;
-      font-size: 14px;
+      font-size: 15px;
+      font-weight: 700;
+      transition: transform 0.12s ease, box-shadow 0.15s ease;
     }
-    .levelTile:hover { background: linear-gradient(180deg,#33477a,#1c2748); }
-    .levelTile .diff { font-size: 10px; opacity: 0.7; display:block; margin-top:2px; }
-    .levelTile .best { font-size: 10px; color: #7cffb2; display:block; }
-    .easy { border-color: #4caf50; }
-    .medium { border-color: #ffca28; }
-    .hard { border-color: #ff7043; }
-    .extreme { border-color: #e53935; }
+    .levelTile:hover { background: linear-gradient(180deg,#33477a,#1c2748); transform: translateY(-2px); box-shadow: 0 6px 16px rgba(0,0,0,0.3); }
+    .levelTile:active { transform: translateY(0) scale(0.96); }
+    .levelTile .diff {
+      font-size: 9px; font-weight: 600; letter-spacing: 0.4px; text-transform: uppercase;
+      display: inline-block; margin-top: 5px; padding: 2px 8px; border-radius: 999px;
+      background: rgba(255,255,255,0.08); opacity: 0.85;
+    }
+    .levelTile .best { font-size: 10px; color: var(--accent); display:flex; align-items:center; justify-content:center; gap:3px; margin-top:4px; }
+    .levelTile .best .icon { width: 11px; height: 11px; }
+    .easy .diff { color: #7be08a; }
+    .medium .diff { color: #ffd76a; }
+    .hard .diff { color: #ff9d70; }
+    .extreme .diff { color: #ff6b6b; }
+    .easy { border-color: #3c6b46; }
+    .medium { border-color: #7a6a2e; }
+    .hard { border-color: #7a4530; }
+    .extreme { border-color: #7a3232; }
     #endlessTile {
       background: linear-gradient(180deg,#5a2d7a,#2b1442);
       border-color: #b06be0;
       grid-column: span 2;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
     }
+    #endlessTile .icon { width: 22px; height: 22px; }
 
     /* ---------- Mobile Controls ---------- */
     #joystickBase {
       position: absolute;
-      bottom: 40px;
-      left: 40px;
-      width: 130px;
-      height: 130px;
+      bottom: calc(36px + var(--safe-b));
+      left: calc(36px + var(--safe-l));
+      width: 132px;
+      height: 132px;
       border-radius: 50%;
-      background: rgba(255,255,255,0.12);
-      border: 2px solid rgba(255,255,255,0.35);
+      background: radial-gradient(circle at 35% 30%, rgba(255,255,255,0.16), rgba(255,255,255,0.05));
+      border: 2px solid rgba(255,255,255,0.28);
+      box-shadow: 0 8px 24px rgba(0,0,0,0.35), inset 0 0 20px rgba(0,0,0,0.2);
       touch-action: none;
       z-index: 60;
     }
     #joystickKnob {
       position: absolute;
       top: 50%; left: 50%;
-      width: 56px; height: 56px;
-      margin-left: -28px; margin-top: -28px;
+      width: 58px; height: 58px;
+      margin-left: -29px; margin-top: -29px;
       border-radius: 50%;
-      background: rgba(255,255,255,0.55);
-      border: 2px solid rgba(255,255,255,0.8);
+      background: radial-gradient(circle at 35% 30%, #ffffff, #cfd8ff);
+      border: 2px solid rgba(255,255,255,0.9);
+      box-shadow: 0 4px 14px rgba(0,0,0,0.35);
       pointer-events: none;
+      transition: background 0.15s;
     }
     #mobilePauseBtn {
       position: absolute;
-      bottom: 40px;
-      right: 40px;
-      width: 64px;
-      height: 64px;
+      bottom: calc(36px + var(--safe-b));
+      right: calc(36px + var(--safe-r));
+      width: 66px;
+      height: 66px;
       border-radius: 50%;
-      background: rgba(255,255,255,0.15);
-      border: 2px solid rgba(255,255,255,0.4);
+      background: rgba(20, 24, 40, 0.55);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      border: 2px solid rgba(255,255,255,0.3);
       color: white;
-      font-size: 26px;
       display: flex;
       align-items: center;
       justify-content: center;
       z-index: 60;
       pointer-events: auto;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.35);
     }
+    #mobilePauseBtn:active { transform: scale(0.92); }
+    #mobilePauseBtn .icon { width: 26px; height: 26px; }
   </style>
   </head>
   <body>
@@ -289,20 +327,19 @@
   <!-- ================= MAIN MENU ================= -->
   <div id="mainMenu" class="overlay">
     <div class="title">COIN BALL</div>
-   
+
     <div class="panel">
       <h3 style="margin:4px 0 10px;">Choose your controls</h3>
       <div class="row">
-        <div id="pcBtn" class="btn selected">PC</div>
-        <div id="mobileBtn" class="btn">Touch</div>
+        <div id="pcBtn" class="btn selected"><span class="icon" data-icon="pc"></span>PC</div>
+        <div id="mobileBtn" class="btn"><span class="icon" data-icon="touch"></span>Touch</div>
       </div>
       <div class="row" style="margin-top:20px;">
-        <div id="playBtn" class="btn">Play level 1</div>
-        <div id="levelSelectBtn" class="btn">Level Select</div>
-        <div id="endlessBtn" class="btn">Endless Mode</div>
+        <div id="playBtn" class="btn"><span class="icon" data-icon="play"></span>Play level 1</div>
+        <div id="levelSelectBtn" class="btn"><span class="icon" data-icon="grid"></span>Level Select</div>
+        <div id="endlessBtn" class="btn"><span class="icon" data-icon="infinity"></span>Endless Mode</div>
       </div>
     </div>
-    
   </div>
 
   <!-- ================= LEVEL SELECT ================= -->
@@ -311,7 +348,7 @@
     <div class="panel">
       <div id="levelGrid"></div>
       <div class="row" style="margin-top:16px;">
-        <div id="backToMenuBtn" class="btn small">Back</div>
+        <div id="backToMenuBtn" class="btn small"><span class="icon" data-icon="back"></span>Back</div>
       </div>
     </div>
   </div>
@@ -321,41 +358,66 @@
     <div class="title" style="font-size:32px;">PAUSED</div>
     <div class="panel">
       <div class="row">
-        <div id="resumeBtn" class="btn">Resume</div>
-        <div id="restartBtn" class="btn">Restart Level</div>
-        <div id="regenBtnMenu" class="btn">Regenerate Layout</div>
-        <div id="pauseLevelSelectBtn" class="btn">Level Select</div>
-        <div id="mainMenuBtn" class="btn">Main Menu</div>
+        <div id="resumeBtn" class="btn"><span class="icon" data-icon="play"></span>Resume</div>
+        <div id="restartBtn" class="btn"><span class="icon" data-icon="restart"></span>Restart Level</div>
+        <div id="regenBtnMenu" class="btn"><span class="icon" data-icon="dice"></span>Regenerate Layout</div>
+        <div id="pauseLevelSelectBtn" class="btn"><span class="icon" data-icon="grid"></span>Level Select</div>
+        <div id="mainMenuBtn" class="btn"><span class="icon" data-icon="home"></span>Main Menu</div>
       </div>
     </div>
   </div>
 
   <!-- ================= IN-GAME HUD ================= -->
-  
+
   <div id="winMessage">
     <span class="letter">Y</span><span class="letter">o</span><span class="letter">u</span> <span class="letter">W</span><span class="letter">i</span><span class="letter">n</span><span class="letter">!</span>
     <div class="row" style="justify-content:center; margin-top:20px;">
-      <div id="winMainMenuBtn" class="btn">Main Menu</div>
+      <div id="winMainMenuBtn" class="btn"><span class="icon" data-icon="home"></span>Main Menu</div>
     </div>
   </div>
   <div id="fireworks"></div>
   <div id="topRight">
-    <div id="coinCount">Coins Remaining: 0</div>
-    <div id="pauseBtn">Pause</div>
-    <div id="regenBtn">New Layout</div>
+    <div id="coinCount" class="chip"><span class="icon" data-icon="coin"></span><span id="coinCountText">Coins: 0</span></div>
+    <div id="pauseBtn" class="chip chip-btn"><span class="icon" data-icon="pause"></span><span>Pause</span></div>
+    <div id="regenBtn" class="chip chip-btn"><span class="icon" data-icon="dice"></span><span>New Layout</span></div>
   </div>
-  <div id="levelInfo">Level: 1</div>
-  <div id="timer">Time: 00:00.000</div>
-  
+  <div id="levelInfo" class="chip"><span class="icon" data-icon="flag"></span><span id="levelInfoText">Level: 1</span></div>
+  <div id="timer" class="chip"><span class="icon" data-icon="timer"></span><span id="timerText">00:00.000</span></div>
 
   <!-- Mobile controls -->
   <div id="joystickBase" class="hidden">
     <div id="joystickKnob"></div>
   </div>
-  <div id="mobilePauseBtn" class="hidden">P</div>
+  <div id="mobilePauseBtn" class="hidden"><span class="icon" data-icon="pause"></span></div>
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/howler/2.2.3/howler.min.js"></script>
+  <script>
+    const ICONS = {
+      pc: '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="13" rx="2.5"/><path d="M8 21h8M12 17v4"/></svg>',
+      touch: '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="2" width="12" height="20" rx="3"/><path d="M11 18h2"/></svg>',
+      play: '<svg viewBox="0 0 24 24" width="20" height="20"><path d="M8 5.2c0-.9 1-1.4 1.7-.9l10 6.8c.6.4.6 1.3 0 1.8l-10 6.8c-.7.5-1.7 0-1.7-.9z" fill="currentColor"/></svg>',
+      grid: '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7.5" height="7.5" rx="2"/><rect x="13.5" y="3" width="7.5" height="7.5" rx="2"/><rect x="3" y="13.5" width="7.5" height="7.5" rx="2"/><rect x="13.5" y="13.5" width="7.5" height="7.5" rx="2"/></svg>',
+      infinity: '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18.2 8c4.4 0 4.4 8 0 8-3.2 0-5-4-6.2-4-1.2 0-3 4-6.2 4-4.4 0-4.4-8 0-8 3.2 0 5 4 6.2 4 1.2 0 3-4 6.2-4z"/></svg>',
+      back: '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"/><path d="M11 6l-6 6 6 6"/></svg>',
+      restart: '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-3-6.7"/><path d="M21 3v5h-5"/></svg>',
+      dice: '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="4.5"/><circle cx="8" cy="8" r="1.15" fill="currentColor" stroke="none"/><circle cx="16" cy="8" r="1.15" fill="currentColor" stroke="none"/><circle cx="8" cy="16" r="1.15" fill="currentColor" stroke="none"/><circle cx="16" cy="16" r="1.15" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1.15" fill="currentColor" stroke="none"/></svg>',
+      home: '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11.5l9-8 9 8"/><path d="M5.5 10v10.5h13V10"/><path d="M10 20.5v-6h4v6"/></svg>',
+      pause: '<svg viewBox="0 0 24 24" width="18" height="18"><rect x="6" y="4.5" width="4.2" height="15" rx="1.6" fill="currentColor"/><rect x="13.8" y="4.5" width="4.2" height="15" rx="1.6" fill="currentColor"/></svg>',
+      coin: '<svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7.5v9M9.3 9.7c0-1.3 1.1-2.2 2.7-2.2s2.7.9 2.7 2c0 2.6-5.4 1.5-5.4 4.1 0 1.1 1.1 2 2.7 2s2.7-.9 2.7-2"/></svg>',
+      flag: '<svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5.5 21V4"/><path d="M5.5 4.5h12.5l-3 3.75 3 3.75H5.5"/></svg>',
+      timer: '<svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.8 1.8"/><path d="M9.5 2.5h5"/></svg>',
+      trophy: '<svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 4h10v4a5 5 0 0 1-10 0z"/><path d="M7 5H4a3 3 0 0 0 3 4"/><path d="M17 5h3a3 3 0 0 1-3 4"/><path d="M12 13v3"/><path d="M9 20h6"/><path d="M10 17h4l.6 3H9.4z"/></svg>'
+    };
+    function applyIcons(root) {
+      (root || document).querySelectorAll('[data-icon]').forEach(el => {
+        const name = el.getAttribute('data-icon');
+        if (ICONS[name]) el.innerHTML = ICONS[name];
+        el.classList.add('icon');
+      });
+    }
+    applyIcons(document);
+  </script>
   <script>
     let scene, camera, renderer, ball, platform;
     let moveForward = false, moveBackward = false, moveLeft = false, moveRight = false;
@@ -562,6 +624,7 @@
       scene = new THREE.Scene();
       camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
       renderer = new THREE.WebGLRenderer({ antialias: true });
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
       renderer.setSize(window.innerWidth, window.innerHeight);
       document.body.appendChild(renderer.domElement);
       renderer.shadowMap.enabled = true;
@@ -570,6 +633,7 @@
       window.addEventListener('resize', function() {
         camera.aspect = window.innerWidth / window.innerHeight;
         camera.updateProjectionMatrix();
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
         renderer.setSize(window.innerWidth, window.innerHeight);
       });
 
@@ -625,7 +689,7 @@
       createClouds();
       createWinPlatform(currentLevelConfig.winPos);
 
-      document.getElementById('levelInfo').textContent = endlessMode
+      document.getElementById('levelInfoText').textContent = endlessMode
         ? `Endless — Level: ${level}`
         : `Level: ${level} / ${totalLevels}`;
       updateCoinCounter();
@@ -987,7 +1051,7 @@
     }
 
     function updateCoinCounter() {
-      document.getElementById('coinCount').textContent = `Coins Remaining: ${coinsRemaining}`;
+      document.getElementById('coinCountText').textContent = `Coins: ${coinsRemaining}`;
     }
 
     function checkWinCondition() {
@@ -1108,7 +1172,7 @@
       const minutes = String(elapsedTime.getUTCMinutes()).padStart(2, '0');
       const seconds = String(elapsedTime.getUTCSeconds()).padStart(2, '0');
       const milliseconds = String(elapsedTime.getUTCMilliseconds()).padStart(3, '0');
-      document.getElementById('timer').textContent = `Time: ${minutes}:${seconds}.${milliseconds}`;
+      document.getElementById('timerText').textContent = `${minutes}:${seconds}.${milliseconds}`;
     }
 
     /* ============================================================
@@ -1210,14 +1274,14 @@
         const tile = document.createElement('div');
         tile.className = `levelTile ${diff.cls}`;
         const best = getBestTime(lvl);
-        tile.innerHTML = `<div>${lvl}</div><span class="diff">${diff.text}</span>${best ? `<span class="best">${best}</span>` : ''}`;
+        tile.innerHTML = `<div>${lvl}</div><span class="diff">${diff.text}</span>${best ? `<span class="best">${ICONS.trophy}${best}</span>` : ''}`;
         tile.addEventListener('click', () => startGame(lvl, false));
         grid.appendChild(tile);
       }
       const endlessTile = document.createElement('div');
       endlessTile.id = 'endlessTile';
       endlessTile.className = 'levelTile';
-      endlessTile.innerHTML = `<div>♾ Endless</div><span class="diff">Infinite generated levels</span>`;
+      endlessTile.innerHTML = `${ICONS.infinity}<div>Endless</div><span class="diff">Infinite levels</span>`;
       endlessTile.addEventListener('click', () => startGame(1, true));
       grid.appendChild(endlessTile);
     }
