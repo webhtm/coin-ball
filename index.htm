@@ -1,18 +1,25 @@
 <html><head><base href="https://websim.ai">
-  <title>3D Ball Rolling Game - Multiple Levels with Holes</title>
+  <meta charset="utf-8">
+  <title>Coin Ball</title>
   <style>
-    body { margin: 0; overflow: hidden; }
-    canvas { width: 100%; height: 100% }
+    html, body { margin: 0; overflow: hidden; background:#000; }
+    canvas { width: 100%; height: 100%; display:block; }
+    * { box-sizing: border-box; user-select: none; -webkit-user-select: none; -webkit-tap-highlight-color: transparent; }
+
+    #hud {
+      display: none;
+    }
     #instructions {
       position: absolute;
       top: 10px;
       left: 10px;
       color: white;
       font-family: Arial, sans-serif;
-      font-size: 14px;
+      font-size: 13px;
       background-color: rgba(0,0,0,0.5);
       padding: 10px;
       border-radius: 5px;
+      max-width: 260px;
     }
     #winMessage {
       position: absolute;
@@ -21,12 +28,16 @@
       transform: translate(-50%, -50%);
       color: white;
       font-family: 'Arial Black', sans-serif;
-      font-size: 72px;
+      font-size: 64px;
       text-align: center;
       text-shadow: 0 0 10px #00ff00, 0 0 20px #00ff00, 0 0 30px #00ff00;
       opacity: 0;
       transition: opacity 1s;
       display: none;
+      z-index: 50;
+    }
+    #winMessage button, #levelCompleteMsg button {
+      pointer-events: auto;
     }
     #fireworks {
       position: fixed;
@@ -37,16 +48,24 @@
       pointer-events: none;
       z-index: 9999;
     }
-    #coinCount {
+    #topRight {
       position: absolute;
       top: 10px;
       right: 10px;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 8px;
+      z-index: 20;
+    }
+    #coinCount {
       color: gold;
       font-family: Arial, sans-serif;
-      font-size: 24px;
+      font-size: 20px;
       background-color: rgba(0,0,0,0.5);
-      padding: 10px;
+      padding: 8px 10px;
       border-radius: 5px;
+      white-space: nowrap;
     }
     #levelInfo {
       position: absolute;
@@ -54,7 +73,7 @@
       left: 10px;
       color: white;
       font-family: Arial, sans-serif;
-      font-size: 24px;
+      font-size: 20px;
       background-color: rgba(0,0,0,0.5);
       padding: 10px;
       border-radius: 5px;
@@ -65,9 +84,9 @@
       right: 10px;
       color: white;
       font-family: Arial, sans-serif;
-      font-size: 14px;
+      font-size: 13px;
       background-color: rgba(0,0,0,0.5);
-      padding: 10px;
+      padding: 8px;
       border-radius: 5px;
     }
     #timer {
@@ -77,10 +96,43 @@
       transform: translateX(-50%);
       color: white;
       font-family: Arial, sans-serif;
-      font-size: 24px;
+      font-size: 22px;
       background-color: rgba(0,0,0,0.5);
       padding: 10px;
       border-radius: 5px;
+    }
+    #pauseBtn {
+      color: white;
+      font-family: Arial, sans-serif;
+      font-size: 16px;
+      background-color: rgba(0,0,0,0.5);
+      padding: 6px 14px;
+      border-radius: 5px;
+      cursor: pointer;
+      pointer-events: auto;
+      border: 1px solid rgba(255,255,255,0.3);
+      white-space: nowrap;
+    }
+    #regenBtn {
+      color: white;
+      font-family: Arial, sans-serif;
+      font-size: 13px;
+      background-color: rgba(0,0,0,0.5);
+      padding: 6px 12px;
+      border-radius: 5px;
+      cursor: pointer;
+      white-space: nowrap;
+      pointer-events: auto;
+      border: 1px solid rgba(255,255,255,0.3);
+    }
+    @media (max-width: 700px) {
+      #instructions { font-size: 10px; max-width: 130px; padding: 6px; }
+      #timer { font-size: 14px; padding: 6px 8px; }
+      #coinCount { font-size: 14px; padding: 6px 8px; }
+      #levelInfo { font-size: 14px; padding: 6px 8px; }
+      #pauseBtn { font-size: 13px; padding: 5px 10px; }
+      #regenBtn { font-size: 11px; padding: 5px 8px; }
+      #credits { display: none; }
     }
     @keyframes rainbow {
       0% { color: red; }
@@ -92,7 +144,7 @@
       84% { color: violet; }
       100% { color: red; }
     }
-    #winMessage span {
+    #winMessage span.letter {
       display: inline-block;
       animation: rainbow 5s linear infinite, bounce 0.5s ease-in-out infinite alternate;
     }
@@ -100,20 +152,208 @@
       from { transform: translateY(0); }
       to { transform: translateY(-20px); }
     }
+
+    /* ---------- Overlays ---------- */
+    .overlay {
+      position: absolute;
+      top: 0; left: 0; width: 100%; height: 100%;
+      background: radial-gradient(circle at 50% 20%, #1b2a4a 0%, #05070d 80%);
+      color: white;
+      font-family: Arial, sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      z-index: 100;
+      overflow-y: auto;
+      padding: 20px;
+    }
+    .hidden { display: none !important; }
+    .title {
+      font-size: 48px;
+      font-weight: bold;
+      margin-bottom: 6px;
+      background: linear-gradient(90deg, red, orange, yellow, green, blue, indigo, violet);
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+      text-align: center;
+    }
+    .subtitle { opacity: 0.75; margin-bottom: 24px; font-size: 14px; text-align:center; }
+    .btn {
+      background: linear-gradient(180deg,#2e3f6b,#1a2440);
+      border: 1px solid #4a5f9e;
+      color: white;
+      font-size: 18px;
+      padding: 12px 26px;
+      margin: 8px;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: transform 0.1s, background 0.2s;
+      min-width: 200px;
+      text-align: center;
+    }
+    .btn:hover { background: linear-gradient(180deg,#3d5390,#232f52); transform: scale(1.03); }
+    .btn:active { transform: scale(0.97); }
+    .btn.small { font-size: 14px; padding: 8px 16px; min-width: 120px; }
+    .btn.selected { border-color: #7cffb2; box-shadow: 0 0 12px #7cffb2; }
+    .row { display: flex; gap: 14px; flex-wrap: wrap; justify-content: center; }
+    .panel {
+      background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(255,255,255,0.15);
+      border-radius: 12px;
+      padding: 20px;
+      max-width: 900px;
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    #levelGrid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, 90px);
+      gap: 10px;
+      justify-content: center;
+      max-height: 50vh;
+      overflow-y: auto;
+      padding: 10px;
+      width: 100%;
+    }
+    .levelTile {
+      background: linear-gradient(180deg,#243252,#141b30);
+      border: 1px solid #3c4f80;
+      border-radius: 8px;
+      color: white;
+      padding: 10px 4px;
+      cursor: pointer;
+      text-align: center;
+      font-size: 14px;
+    }
+    .levelTile:hover { background: linear-gradient(180deg,#33477a,#1c2748); }
+    .levelTile .diff { font-size: 10px; opacity: 0.7; display:block; margin-top:2px; }
+    .levelTile .best { font-size: 10px; color: #7cffb2; display:block; }
+    .easy { border-color: #4caf50; }
+    .medium { border-color: #ffca28; }
+    .hard { border-color: #ff7043; }
+    .extreme { border-color: #e53935; }
+    #endlessTile {
+      background: linear-gradient(180deg,#5a2d7a,#2b1442);
+      border-color: #b06be0;
+      grid-column: span 2;
+    }
+
+    /* ---------- Mobile Controls ---------- */
+    #joystickBase {
+      position: absolute;
+      bottom: 40px;
+      left: 40px;
+      width: 130px;
+      height: 130px;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.12);
+      border: 2px solid rgba(255,255,255,0.35);
+      touch-action: none;
+      z-index: 60;
+    }
+    #joystickKnob {
+      position: absolute;
+      top: 50%; left: 50%;
+      width: 56px; height: 56px;
+      margin-left: -28px; margin-top: -28px;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.55);
+      border: 2px solid rgba(255,255,255,0.8);
+      pointer-events: none;
+    }
+    #mobilePauseBtn {
+      position: absolute;
+      bottom: 40px;
+      right: 40px;
+      width: 64px;
+      height: 64px;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.15);
+      border: 2px solid rgba(255,255,255,0.4);
+      color: white;
+      font-size: 26px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 60;
+      pointer-events: auto;
+    }
   </style>
   </head>
   <body>
-  <div id="instructions">
-    Use WASD or Arrow keys to roll the rainbow ball.<br>
-    Collect all spinning coins and reach the checkered platform to advance to the next level!<br>
-    Be careful of holes - falling in one will reset the level!
+
+  <!-- ================= MAIN MENU ================= -->
+  <div id="mainMenu" class="overlay">
+    <div class="title">COIN BALL</div>
+   
+    <div class="panel">
+      <h3 style="margin:4px 0 10px;">Choose your controls</h3>
+      <div class="row">
+        <div id="pcBtn" class="btn selected">PC</div>
+        <div id="mobileBtn" class="btn">Touch</div>
+      </div>
+      <div class="row" style="margin-top:20px;">
+        <div id="playBtn" class="btn">Play level 1</div>
+        <div id="levelSelectBtn" class="btn">Level Select</div>
+        <div id="endlessBtn" class="btn">Endless Mode</div>
+      </div>
+    </div>
+    
   </div>
+
+  <!-- ================= LEVEL SELECT ================= -->
+  <div id="levelSelectMenu" class="overlay hidden">
+    <div class="title" style="font-size:32px;">SELECT LEVEL</div>
+    <div class="panel">
+      <div id="levelGrid"></div>
+      <div class="row" style="margin-top:16px;">
+        <div id="backToMenuBtn" class="btn small">Back</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= PAUSE MENU ================= -->
+  <div id="pauseMenu" class="overlay hidden">
+    <div class="title" style="font-size:32px;">PAUSED</div>
+    <div class="panel">
+      <div class="row">
+        <div id="resumeBtn" class="btn">Resume</div>
+        <div id="restartBtn" class="btn">Restart Level</div>
+        <div id="regenBtnMenu" class="btn">Regenerate Layout</div>
+        <div id="pauseLevelSelectBtn" class="btn">Level Select</div>
+        <div id="mainMenuBtn" class="btn">Main Menu</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= IN-GAME HUD ================= -->
+  
   <div id="winMessage">
-    <span>Y</span><span>o</span><span>u</span> <span>W</span><span>i</span><span>n</span><span>!</span>
+    <span class="letter">Y</span><span class="letter">o</span><span class="letter">u</span> <span class="letter">W</span><span class="letter">i</span><span class="letter">n</span><span class="letter">!</span>
+    <div class="row" style="justify-content:center; margin-top:20px;">
+      <div id="winMainMenuBtn" class="btn">Main Menu</div>
+    </div>
   </div>
   <div id="fireworks"></div>
-  <div id="coinCount">Coins Remaining: 0</div>
+  <div id="topRight">
+    <div id="coinCount">Coins Remaining: 0</div>
+    <div id="pauseBtn">Pause</div>
+    <div id="regenBtn">New Layout</div>
+  </div>
   <div id="levelInfo">Level: 1</div>
+  <div id="timer">Time: 00:00.000</div>
+  
+
+  <!-- Mobile controls -->
+  <div id="joystickBase" class="hidden">
+    <div id="joystickKnob"></div>
+  </div>
+  <div id="mobilePauseBtn" class="hidden">P</div>
+
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/howler/2.2.3/howler.min.js"></script>
   <script>
@@ -127,160 +367,281 @@
     let coinsRemaining = 0;
     let clouds = [];
     let currentLevel = 1;
-    let totalLevels = 5;
+    let totalLevels = 30;
     let gameWon = false;
     let startTime;
     let timerInterval;
-    
+    let paused = false;
+    let pausedAt = 0;
+    let controlScheme = 'pc';
+    let endlessMode = false;
+    let currentLevelConfig = null;
+    let currentSeed = null;
+    let gameStarted = false;
+
+    // Joystick state
+    const joystickVector = { x: 0, z: 0 };
+
     // Sound effects
     const sounds = {
-      coinCollect: new Howl({
-        src: ['https://freesound.org/data/previews/162/162805_2578041-lq.mp3'],
-        volume: 0.5
-      }),
-      levelComplete: new Howl({
-        src: ['https://freesound.org/data/previews/122/122255_1074082-lq.mp3'],
-        volume: 0.5
-      }),
-      fallInHole: new Howl({
-        src: ['https://freesound.org/data/previews/326/326133_3271346-lq.mp3'],
-        volume: 0.5
-      }),
-      backgroundMusic: new Howl({
-        src: ['https://freesound.org/data/previews/560/560738_12295155-lq.mp3'],
-        volume: 0.3,
-        loop: true,
-      }),
-      winSound: new Howl({
-        src: ['https://freesound.org/data/previews/258/258142_4631294-lq.mp3'],
-        volume: 0.5
-      })
+      coinCollect: new Howl({ src: ['https://freesound.org/data/previews/162/162805_2578041-lq.mp3'], volume: 0.5 }),
+      levelComplete: new Howl({ src: ['https://freesound.org/data/previews/122/122255_1074082-lq.mp3'], volume: 0.5 }),
+      fallInHole: new Howl({ src: ['https://freesound.org/data/previews/326/326133_3271346-lq.mp3'], volume: 0.5 }),
+      backgroundMusic: new Howl({ src: ['https://freesound.org/data/previews/560/560738_12295155-lq.mp3'], volume: 0.3, loop: true }),
+      winSound: new Howl({ src: ['https://freesound.org/data/previews/258/258142_4631294-lq.mp3'], volume: 0.5 })
     };
-    
-    function init() {
+
+    /* ============================================================
+       PROCEDURAL LEVEL GENERATION
+       ============================================================ */
+
+    function mulberry32(a) {
+      return function() {
+        a |= 0; a = a + 0x6D2B79F5 | 0;
+        let t = Math.imul(a ^ a >>> 15, 1 | a);
+        t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+        return ((t ^ t >>> 14) >>> 0) / 4294967296;
+      };
+    }
+
+    function shuffleArr(arr, rand) {
+      const a = arr.slice();
+      for (let i = a.length - 1; i > 0; i--) {
+        const j = Math.floor(rand() * (i + 1));
+        [a[i], a[j]] = [a[j], a[i]];
+      }
+      return a;
+    }
+
+    function difficultyLabel(levelNumber) {
+      if (levelNumber <= 5) return { text: 'Easy', cls: 'easy' };
+      if (levelNumber <= 15) return { text: 'Medium', cls: 'medium' };
+      if (levelNumber <= 25) return { text: 'Hard', cls: 'hard' };
+      return { text: 'Extreme', cls: 'extreme' };
+    }
+
+    // Generation rules:
+    //  - Grid size grows every 3 levels (3 -> 6), producing a bigger maze.
+    //  - A perfect maze is carved with a recursive backtracker (seeded).
+    //  - "Openness" extra-removes some walls; higher levels are less open (harder).
+    //  - Coin count and hole count scale up with level number.
+    function generateLevel(levelNumber, customSeed) {
+      const seed = (customSeed !== undefined && customSeed !== null) ? customSeed : (levelNumber * 100003 + 7);
+      const rand = mulberry32(seed);
+
+      const gridSize = Math.min(3 + Math.floor((levelNumber - 1) / 3), 6);
+      const cell = 20 / gridSize;
+      const half = cell / 2;
+      const xzMin = -10;
+
+      const xCenter = c => xzMin + cell * (c + 0.5);
+      const zCenter = r => xzMin + cell * (r + 0.5);
+
+      // cell walls: true = wall present
+      const cells = [];
+      for (let r = 0; r < gridSize; r++) {
+        cells.push([]);
+        for (let c = 0; c < gridSize; c++) {
+          cells[r].push({ N: true, S: true, E: true, W: true, visited: false });
+        }
+      }
+
+      // iterative recursive-backtracker maze carve (avoids call stack issues)
+      function carveMaze(startR, startC) {
+        const stack = [[startR, startC]];
+        cells[startR][startC].visited = true;
+        while (stack.length) {
+          const [r, c] = stack[stack.length - 1];
+          const dirs = shuffleArr([
+            [-1, 0, 'N', 'S'], [1, 0, 'S', 'N'], [0, -1, 'W', 'E'], [0, 1, 'E', 'W']
+          ], rand);
+          let moved = false;
+          for (const [dr, dc, side, opp] of dirs) {
+            const nr = r + dr, nc = c + dc;
+            if (nr >= 0 && nr < gridSize && nc >= 0 && nc < gridSize && !cells[nr][nc].visited) {
+              cells[r][c][side] = false;
+              cells[nr][nc][opp] = false;
+              cells[nr][nc].visited = true;
+              stack.push([nr, nc]);
+              moved = true;
+              break;
+            }
+          }
+          if (!moved) stack.pop();
+        }
+      }
+      carveMaze(0, 0);
+
+      // Extra openness pass - lower levels get more shortcuts removed (easier), higher levels stay tight.
+      const opennessFactor = Math.max(0.04, 0.45 - levelNumber * 0.012);
+      for (let r = 0; r < gridSize; r++) {
+        for (let c = 0; c < gridSize; c++) {
+          if (r > 0 && cells[r][c].N && rand() < opennessFactor) {
+            cells[r][c].N = false;
+            cells[r - 1][c].S = false;
+          }
+          if (c > 0 && cells[r][c].W && rand() < opennessFactor) {
+            cells[r][c].W = false;
+            cells[r][c - 1].E = false;
+          }
+        }
+      }
+
+      // Build wall segment list: { x, z, w, d } (w = width along x, d = depth along z)
+      const wallSegs = [];
+      const wallThickness = 0.15;
+      const wallHeight = 1;
+      // outer boundary
+      wallSegs.push({ x: 0, y: 0.5, z: -10, w: 20, h: wallHeight, d: wallThickness });
+      wallSegs.push({ x: 0, y: 0.5, z: 10, w: 20, h: wallHeight, d: wallThickness });
+      wallSegs.push({ x: -10, y: 0.5, z: 0, w: wallThickness, h: wallHeight, d: 20 });
+      wallSegs.push({ x: 10, y: 0.5, z: 0, w: wallThickness, h: wallHeight, d: 20 });
+      // interior horizontal walls (N side of each cell in rows > 0)
+      for (let r = 1; r < gridSize; r++) {
+        for (let c = 0; c < gridSize; c++) {
+          if (cells[r][c].N) {
+            wallSegs.push({ x: xCenter(c), y: 0.5, z: xzMin + cell * r, w: cell, h: wallHeight, d: wallThickness });
+          }
+        }
+      }
+      // interior vertical walls (W side of each cell in cols > 0)
+      for (let c = 1; c < gridSize; c++) {
+        for (let r = 0; r < gridSize; r++) {
+          if (cells[r][c].W) {
+            wallSegs.push({ x: xzMin + cell * c, y: 0.5, z: zCenter(r), w: wallThickness, h: wallHeight, d: cell });
+          }
+        }
+      }
+
+      const startCell = { r: 0, c: 0 };
+      const endCell = { r: gridSize - 1, c: gridSize - 1 };
+      const startPos = new THREE.Vector3(xzMin + cell * 0.1, 0.5, xzMin + cell * 0.1);
+      const winPos = new THREE.Vector3(xCenter(endCell.c), 0, zCenter(endCell.r));
+
+      // pick cells for coins/holes, skipping start & end cells
+      const availableCells = [];
+      for (let r = 0; r < gridSize; r++) {
+        for (let c = 0; c < gridSize; c++) {
+          if ((r === startCell.r && c === startCell.c) || (r === endCell.r && c === endCell.c)) continue;
+          availableCells.push({ r, c });
+        }
+      }
+      const shuffledCells = shuffleArr(availableCells, rand);
+
+      const coinCount = Math.min(4 + Math.floor(levelNumber * 0.8), Math.max(3, shuffledCells.length - 2));
+      const holeCount = Math.min(Math.floor(levelNumber * 0.6), Math.max(0, shuffledCells.length - coinCount - 1));
+
+      const coinPositions = [];
+      const holePositions = [];
+      let idx = 0;
+      for (let i = 0; i < coinCount && idx < shuffledCells.length; i++, idx++) {
+        const cellRef = shuffledCells[idx];
+        const jitter = cell * 0.18;
+        coinPositions.push({
+          x: xCenter(cellRef.c) + (rand() - 0.5) * jitter,
+          z: zCenter(cellRef.r) + (rand() - 0.5) * jitter
+        });
+      }
+      for (let i = 0; i < holeCount && idx < shuffledCells.length; i++, idx++) {
+        const cellRef = shuffledCells[idx];
+        holePositions.push({ x: xCenter(cellRef.c), z: zCenter(cellRef.r) });
+      }
+
+      return {
+        gridSize, cell, wallSegs, coinPositions, holePositions,
+        startPos, winPos, seed
+      };
+    }
+
+    /* ============================================================
+       SCENE / LEVEL LOADING
+       ============================================================ */
+
+    function initRenderer() {
+      if (renderer) return;
       scene = new THREE.Scene();
       camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
       renderer = new THREE.WebGLRenderer({ antialias: true });
       renderer.setSize(window.innerWidth, window.innerHeight);
       document.body.appendChild(renderer.domElement);
-  
-      // Improved Lighting
-      const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
-      scene.add(ambientLight);
-      const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
-      directionalLight.position.set(5, 10, 7);
-      directionalLight.castShadow = true;
-      scene.add(directionalLight);
-  
-      // Improved shadow settings
-      directionalLight.shadow.mapSize.width = 4096;
-      directionalLight.shadow.mapSize.height = 4096;
-      directionalLight.shadow.camera.near = 1;
-      directionalLight.shadow.camera.far = 50;
-      directionalLight.shadow.camera.left = -25;
-      directionalLight.shadow.camera.right = 25;
-      directionalLight.shadow.camera.top = 25;
-      directionalLight.shadow.camera.bottom = -25;
-  
-      // Enable shadow rendering
       renderer.shadowMap.enabled = true;
       renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-  
-      loadLevel(currentLevel);
-  
+
+      window.addEventListener('resize', function() {
+        camera.aspect = window.innerWidth / window.innerHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+      });
+
       document.addEventListener('keydown', onKeyDown);
       document.addEventListener('keyup', onKeyUp);
-  
-      // Start background music after a short delay
-      setTimeout(() => {
-        sounds.backgroundMusic.play();
-      }, 3000);
-  
-      startTimer();
+
       animate();
     }
-  
-    function startTimer() {
-      startTime = Date.now();
-      timerInterval = setInterval(updateTimer, 1);
-    }
-  
-    function updateTimer() {
-      const currentTime = Date.now();
-      const elapsedTime = new Date(currentTime - startTime);
-      const minutes = String(elapsedTime.getUTCMinutes()).padStart(2, '0');
-      const seconds = String(elapsedTime.getUTCSeconds()).padStart(2, '0');
-      const milliseconds = String(elapsedTime.getUTCMilliseconds()).padStart(3, '0');
-      document.getElementById('timer').textContent = `Time: ${minutes}:${seconds}.${milliseconds}`;
-    }
-  
-    function loadLevel(level) {
-      // Clear existing level
-      clearLevel();
-  
-      // Set background color based on level
-      if (level === 5) {
-        scene.background = new THREE.Color(0xff0000); // Red background for level 5
-      } else {
-        scene.background = new THREE.Color(0x87CEEB); // Sky blue background for other levels
-      }
-  
-      // Create new level
-      createBall();
-      createPlatform();
-      createWalls(level);
-      createCoins(level);
-      createHoles(level);
-      createClouds();
-      createWinPlatform(level);
-  
-      // Update level info
-      document.getElementById('levelInfo').textContent = `Level: ${level}`;
-      updateCoinCounter();
-    }
-  
-    function clearLevel() {
-      // Remove all objects from the scene except lights
-      while(scene.children.length > 0){ 
-        scene.remove(scene.children[0]); 
-      }
-      
-      // Re-add lights
+
+    function addLights() {
       const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
       scene.add(ambientLight);
       const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
       directionalLight.position.set(5, 10, 7);
       directionalLight.castShadow = true;
-      scene.add(directionalLight);
-      
-      // Improved shadow settings
-      directionalLight.shadow.mapSize.width = 4096;
-      directionalLight.shadow.mapSize.height = 4096;
+      directionalLight.shadow.mapSize.width = 2048;
+      directionalLight.shadow.mapSize.height = 2048;
       directionalLight.shadow.camera.near = 1;
       directionalLight.shadow.camera.far = 50;
       directionalLight.shadow.camera.left = -25;
       directionalLight.shadow.camera.right = 25;
       directionalLight.shadow.camera.top = 25;
       directionalLight.shadow.camera.bottom = -25;
-  
-      // Reset arrays and counters
+      scene.add(directionalLight);
+    }
+
+    function clearLevel() {
+      while (scene.children.length > 0) {
+        scene.remove(scene.children[0]);
+      }
+      addLights();
       walls = [];
       coins = [];
       holes = [];
       clouds = [];
       coinsRemaining = 0;
     }
-  
-    function createBall() {
+
+    function loadLevel(level, seedOverride) {
+      clearLevel();
+
+      const isFinalNormalLevel = (!endlessMode && level >= totalLevels);
+      scene.background = new THREE.Color(isFinalNormalLevel ? 0xff5533 : 0x87CEEB);
+
+      currentLevelConfig = generateLevel(level, seedOverride);
+      currentSeed = currentLevelConfig.seed;
+
+      createBall(currentLevelConfig.startPos);
+      createPlatform();
+      createWallsFromConfig(currentLevelConfig);
+      createCoinsFromConfig(currentLevelConfig);
+      createHolesFromConfig(currentLevelConfig);
+      createClouds();
+      createWinPlatform(currentLevelConfig.winPos);
+
+      document.getElementById('levelInfo').textContent = endlessMode
+        ? `Endless — Level: ${level}`
+        : `Level: ${level} / ${totalLevels}`;
+      updateCoinCounter();
+    }
+
+    function createBall(pos) {
       const geometry = new THREE.SphereGeometry(0.5, 32, 32);
       const rainbowTexture = createRainbowTexture();
       const material = new THREE.MeshPhongMaterial({ map: rainbowTexture });
       ball = new THREE.Mesh(geometry, material);
-      ball.position.set(-9, 0.5, -9); // Starting position in the corner
+      ball.position.copy(pos);
       ball.castShadow = true;
       scene.add(ball);
+      velocity.set(0, 0, 0);
     }
-  
+
     function createPlatform() {
       const platformGeometry = new THREE.BoxGeometry(20, 0.1, 20);
       const grassTexture = createGrassTexture();
@@ -290,157 +651,31 @@
       platform.receiveShadow = true;
       scene.add(platform);
     }
-  
-    function createWalls(level) {
+
+    function createWallsFromConfig(config) {
       const brickTexture = createBrickTexture();
-  
-      // Outer walls
-      createWall(0, 0.5, -10, 20, 1, 0.1, brickTexture);  // North wall
-      createWall(0, 0.5, 10, 20, 1, 0.1, brickTexture);   // South wall
-      createWall(-10, 0.5, 0, 0.1, 1, 20, brickTexture);  // West wall
-      createWall(10, 0.5, 0, 0.1, 1, 20, brickTexture);   // East wall
-  
-      // Level-specific walls
-      switch(level) {
-        case 1:
-          createWall(-7, 0.5, -3, 6, 1, 0.1, brickTexture);
-          createWall(7, 0.5, 3, 6, 1, 0.1, brickTexture);
-          createWall(-3, 0.5, 7, 0.1, 1, 6, brickTexture);
-          createWall(3, 0.5, -7, 0.1, 1, 6, brickTexture);
-          createWall(0, 0.5, 0, 10, 1, 0.1, brickTexture);
-          break;
-        case 2:
-          createWall(-5, 0.5, -5, 5, 1, 0.1, brickTexture);
-          createWall(5, 0.5, 5, 5, 1, 0.1, brickTexture);
-          createWall(0, 0.5, 0, 0.1, 1, 10, brickTexture);
-          break;
-        case 3:
-          createWall(-7, 0.5, -7, 5, 1, 0.1, brickTexture);
-          createWall(7, 0.5, 7, 5, 1, 0.1, brickTexture);
-          createWall(-7, 0.5, 7, 5, 1, 0.1, brickTexture);
-          createWall(7, 0.5, -7, 5, 1, 0.1, brickTexture);
-          break;
-        case 4:
-          createWall(-6, 0.5, -6, 8, 1, 0.1, brickTexture);
-          createWall(6, 0.5, 6, 8, 1, 0.1, brickTexture);
-          createWall(-6, 0.5, 6, 8, 1, 0.1, brickTexture);
-          createWall(6, 0.5, -6, 8, 1, 0.1, brickTexture);
-          createWall(0, 0.5, 0, 12, 1, 0.1, brickTexture);
-          createWall(0, 0.5, 0, 0.1, 1, 12, brickTexture);
-          break;
-        case 5:
-          // Maze-like structure for the final level
-          createWall(-5, 0.5, -5, 10, 1, 0.1, brickTexture);
-          createWall(5, 0.5, 5, 5, 1, 0.1, brickTexture);
-          createWall(-5, 0.5, 0, 10, 1, 0.1, brickTexture);
-          createWall(5, 0.5, 0, 5, 1, 0.1, brickTexture);
-          createWall(-5, 0.5, 5, 0.1, 1, 5, brickTexture);
-          createWall(5, 0.5, -5, 0.1, 1, 10, brickTexture);
-          createWall(0, 0.5, -5, 0.1, 1, 5,  brickTexture);
-          createWall(0, 0.5, 5, 0.1, 1, 5, brickTexture);
-          break;
+      for (const seg of config.wallSegs) {
+        createWall(seg.x, seg.y, seg.z, seg.w, seg.h, seg.d, brickTexture.clone());
       }
     }
-  
-    function createCoins(level) {
+
+    function createCoinsFromConfig(config) {
       const coinTexture = createCoinTexture();
-      switch(level) {
-        case 1:
-          createCoin(-7, 0.5, -7, coinTexture);
-          createCoin(7, 0.5, -7, coinTexture);
-          createCoin(7, 0.5, 7, coinTexture);
-          createCoin(-5, 0.5, 2, coinTexture);
-          createCoin(5, 0.5, -2, coinTexture);
-          break;
-        case 2:
-          createCoin(-8, 0.5, -8, coinTexture);
-          createCoin(8, 0.5, -8, coinTexture);
-          createCoin(8, 0.5, 8, coinTexture);
-          createCoin(-8, 0.5, 8, coinTexture);
-          createCoin(0, 0.5, 0, coinTexture);
-          createCoin(-4, 0.5, 4, coinTexture);
-          createCoin(4, 0.5, -4, coinTexture);
-          break;
-        case 3:
-          for (let i = -8; i <= 8; i += 4) {
-            for (let j = -8; j <= 8; j += 4) {
-              if (i !== 0 || j !== 0) {
-                createCoin(i, 0.5, j, coinTexture);
-              }
-            }
-          }
-          break;
-        case 4:
-          for (let i = -7; i <= 7; i += 2) {
-            for (let j = -7; j <= 7; j += 2) {
-              if (Math.abs(i) % 4 !== 0 || Math.abs(j) % 4 !== 0) {
-                createCoin(i, 0.5, j, coinTexture);
-              }
-            }
-          }
-          break;
-        case 5:
-          createCoin(-7, 0.5, -7, coinTexture);
-          createCoin(-7, 0.5, 7, coinTexture);
-          createCoin(7, 0.5, -7, coinTexture);
-          createCoin(7, 0.5, 7, coinTexture);
-          createCoin(-2.5, 0.5, -2.5, coinTexture);
-          createCoin(-2.5, 0.5, 2.5, coinTexture);
-          createCoin(2.5, 0.5, -2.5, coinTexture);
-          createCoin(2.5, 0.5, 2.5, coinTexture);
-          break;
+      for (const p of config.coinPositions) {
+        createCoin(p.x, 0.5, p.z, coinTexture);
       }
       coinsRemaining = coins.length;
       updateCoinCounter();
     }
-  
-    function createHoles(level) {
+
+    function createHolesFromConfig(config) {
       const holeGeometry = new THREE.CircleGeometry(0.5, 32);
       const holeMaterial = new THREE.MeshBasicMaterial({ color: 0x000000 });
-      
-      switch(level) {
-        case 1:
-          createHole(-3, 0.01, -3, holeGeometry, holeMaterial);
-          createHole(3, 0.01, 3, holeGeometry, holeMaterial);
-          break;
-        case 2:
-          createHole(-6, 0.01, 0, holeGeometry, holeMaterial);
-          createHole(6, 0.01, 0, holeGeometry, holeMaterial);
-          createHole(0, 0.01, -6, holeGeometry, holeMaterial);
-          createHole(0, 0.01, 6, holeGeometry, holeMaterial);
-          break;
-        case 3:
-          for (let i = -6; i <= 6; i += 4) {
-            for (let j = -6; j <= 6; j += 4) {
-              if (i !== 0 || j !== 0) {
-                createHole(i, 0.01, j, holeGeometry, holeMaterial);
-              }
-            }
-          }
-          break;
-        case 4:
-          for (let i = -8; i <= 8; i += 4) {
-            for (let j = -8; j <= 8; j += 4) {
-              if (i !== 0 || j !== 0) {
-                createHole(i, 0.01, j, holeGeometry, holeMaterial);
-              }
-            }
-          }
-          createHole(0, 0.01, 0, holeGeometry, holeMaterial);
-          break;
-        case 5:
-          // Many holes for the final level
-          for (let i = -9; i <= 9; i += 3) {
-            for (let j = -9; j <= 9; j += 3) {
-              if ((i !== -9 || j !== -9) && (i !== 9 || j !== -9)) { // Avoid start and end positions
-                createHole(i, 0.01, j, holeGeometry, holeMaterial);
-              }
-            }
-          }
-          break;
+      for (const p of config.holePositions) {
+        createHole(p.x, 0.01, p.z, holeGeometry, holeMaterial);
       }
     }
-  
+
     function createHole(x, y, z, geometry, material) {
       const hole = new THREE.Mesh(geometry, material);
       hole.position.set(x, y, z);
@@ -448,40 +683,22 @@
       scene.add(hole);
       holes.push(hole);
     }
-  
-    function createWinPlatform(level) {
+
+    function createWinPlatform(winPos) {
       const winPlatformGeometry = new THREE.BoxGeometry(2, 0.1, 2);
-      const winPlatformMaterial = new THREE.MeshPhongMaterial({ 
-        map: createCheckerboardTexture()
-      });
+      const winPlatformMaterial = new THREE.MeshPhongMaterial({ map: createCheckerboardTexture() });
       const winPlatform = new THREE.Mesh(winPlatformGeometry, winPlatformMaterial);
-      switch(level) {
-        case 1:
-          winPlatform.position.set(-8, 0, 8);
-          break;
-        case 2:
-          winPlatform.position.set(8, 0, -8);
-          break;
-        case 3:
-          winPlatform.position.set(0, 0, 0);
-          break;
-        case 4:
-          winPlatform.position.set(9, 0, 9);
-          break;
-        case 5:
-          winPlatform.position.set(9, 0, -9);
-          break;
-      }
+      winPlatform.position.copy(winPos);
       winPlatform.receiveShadow = true;
       scene.add(winPlatform);
     }
-  
+
+    /* ---------------- Textures ---------------- */
+
     function createRainbowTexture() {
       const canvas = document.createElement('canvas');
-      canvas.width = 256;
-      canvas.height = 256;
+      canvas.width = 256; canvas.height = 256;
       const context = canvas.getContext('2d');
-  
       const gradient = context.createLinearGradient(0, 0, 0, 256);
       gradient.addColorStop(0, 'red');
       gradient.addColorStop(1/6, 'orange');
@@ -490,118 +707,83 @@
       gradient.addColorStop(4/6, 'blue');
       gradient.addColorStop(5/6, 'indigo');
       gradient.addColorStop(1, 'violet');
-  
       context.fillStyle = gradient;
       context.fillRect(0, 0, 256, 256);
-  
-      const texture = new THREE.CanvasTexture(canvas);
-      return texture;
+      return new THREE.CanvasTexture(canvas);
     }
-  
+
     function createBrickTexture() {
       const canvas = document.createElement('canvas');
-      canvas.width = 256;
-      canvas.height = 256;
+      canvas.width = 256; canvas.height = 256;
       const context = canvas.getContext('2d');
-  
-      // Background color (mortar)
       context.fillStyle = '#CCCCCC';
       context.fillRect(0, 0, 256, 256);
-  
-      // Brick color
       context.fillStyle = '#993333';
-  
-      // Draw bricks
-      const brickHeight = 32;
-      const brickWidth = 64;
+      const brickHeight = 32, brickWidth = 64;
       let offsetX = 0;
-  
       for (let y = 0; y < 256; y += brickHeight) {
         for (let x = offsetX; x < 256; x += brickWidth) {
           context.fillRect(x + 1, y + 1, brickWidth - 2, brickHeight - 2);
         }
         offsetX = (offsetX === 0) ? -brickWidth / 2 : 0;
       }
-  
       const texture = new THREE.CanvasTexture(canvas);
       texture.wrapS = THREE.RepeatWrapping;
       texture.wrapT = THREE.RepeatWrapping;
       texture.repeat.set(1, 1);
       return texture;
     }
-  
+
     function createGrassTexture() {
       const canvas = document.createElement('canvas');
-      canvas.width = 256;
-      canvas.height = 256;
+      canvas.width = 256; canvas.height = 256;
       const context = canvas.getContext('2d');
-  
-      // Base grass color
       context.fillStyle = '#4CAF50';
       context.fillRect(0, 0, 256, 256);
-  
-      // Add some variation
       for (let i = 0; i < 1000; i++) {
-        const x = Math.random() * 256;
-        const y = Math.random() * 256;
-        const size = Math.random() * 4 + 1;
+        const x = Math.random() * 256, y = Math.random() * 256, size = Math.random() * 4 + 1;
         context.fillStyle = Math.random() > 0.5 ? '#45a049' : '#5cb860';
         context.fillRect(x, y, size, size);
       }
-  
-      // Add some grass blades
       for (let i = 0; i < 500; i++) {
-        const x = Math.random() * 256;
-        const y = Math.random() * 256;
+        const x = Math.random() * 256, y = Math.random() * 256;
         context.strokeStyle = '#66bb6a';
         context.beginPath();
         context.moveTo(x, y);
         context.lineTo(x + Math.random() * 4 - 2, y - Math.random() * 5 - 5);
         context.stroke();
       }
-  
       const texture = new THREE.CanvasTexture(canvas);
       texture.wrapS = THREE.RepeatWrapping;
       texture.wrapT = THREE.RepeatWrapping;
       texture.repeat.set(10, 10);
       return texture;
     }
-  
+
     function createCoinTexture() {
       const canvas = document.createElement('canvas');
-      canvas.width = 128;
-      canvas.height = 128;
+      canvas.width = 128; canvas.height = 128;
       const context = canvas.getContext('2d');
-  
-      // Base gold color
       context.fillStyle = '#FFD700';
       context.fillRect(0, 0, 128, 128);
-  
-      // Add some shading
       const gradient = context.createRadialGradient(64, 64, 0, 64, 64, 64);
       gradient.addColorStop(0, 'rgba(255, 223, 0, 1)');
       gradient.addColorStop(1, 'rgba(255, 215, 0, 0.8)');
       context.fillStyle = gradient;
       context.fillRect(0, 0, 128, 128);
-  
-      // Add a border
       context.strokeStyle = '#DAA520';
       context.lineWidth = 6;
       context.beginPath();
       context.arc(64, 64, 60, 0, Math.PI * 2);
       context.stroke();
-  
-      // Add some detail
       context.fillStyle = '#DAA520';
       context.font = 'bold 40px Arial';
       context.textAlign = 'center';
       context.textBaseline = 'middle';
       context.fillText('$', 64, 64);
-  
-      const texture = new THREE.CanvasTexture(canvas);
-      return texture;
+      return new THREE.CanvasTexture(canvas);
     }
-  
+
     function createWall(x, y, z, width, height, depth, texture) {
       const wallGeometry = new THREE.BoxGeometry(width, height, depth);
       const wallMaterial = new THREE.MeshPhongMaterial({ map: texture });
@@ -611,36 +793,27 @@
       wall.receiveShadow = true;
       scene.add(wall);
       walls.push(wall);
-  
-      // Adjust texture repeat based on wall dimensions
-      if (width > depth) {
-        texture.repeat.set(width, height);
-      } else {
-        texture.repeat.set(depth, height);
-      }
+      if (width > depth) texture.repeat.set(width, height);
+      else texture.repeat.set(depth, height);
       texture.needsUpdate = true;
     }
-  
+
     function createCoin(x, y, z, texture) {
       const coinGeometry = new THREE.CylinderGeometry(0.3, 0.3, 0.05, 32);
-      const coinMaterial = new THREE.MeshPhongMaterial({ 
-        map: texture,
-        side: THREE.DoubleSide
-      });
+      const coinMaterial = new THREE.MeshPhongMaterial({ map: texture, side: THREE.DoubleSide });
       const coin = new THREE.Mesh(coinGeometry, coinMaterial);
       coin.position.set(x, y, z);
-      coin.rotation.z = Math.PI / 2; // Set the coin on its edge
+      coin.rotation.z = Math.PI / 2;
       coin.castShadow = true;
       scene.add(coin);
       coins.push(coin);
     }
-  
+
     function createCheckerboardTexture() {
       const size = 4;
       const data = new Uint8Array(size * size * 3);
       for (let i = 0; i < size * size; i++) {
-        const x = i % size;
-        const y = Math.floor(i / size);
+        const x = i % size, y = Math.floor(i / size);
         const color = (x + y) % 2 === 0 ? 255 : 0;
         data[i * 3] = data[i * 3 + 1] = data[i * 3 + 2] = color;
       }
@@ -649,136 +822,141 @@
       texture.needsUpdate = true;
       return texture;
     }
-  
+
     function createClouds() {
       const cloudTexture = createCloudTexture();
       const cloudMaterial = new THREE.SpriteMaterial({ map: cloudTexture, transparent: true });
-  
-      // Add clouds above the stage
       for (let i = 0; i < 20; i++) {
         const cloud = new THREE.Sprite(cloudMaterial);
-        cloud.position.set(
-          Math.random() * 40 - 20,
-          Math.random() * 5 + 5,
-          Math.random() * 40 - 20
-        );
+        cloud.position.set(Math.random() * 40 - 20, Math.random() * 5 + 5, Math.random() * 40 - 20);
         const scale = Math.random() * 2 + 1;
         cloud.scale.set(scale, scale, 1);
         scene.add(cloud);
         clouds.push(cloud);
       }
-  
-      // Add clouds underneath the stage
       for (let i = 0; i < 30; i++) {
         const cloud = new THREE.Sprite(cloudMaterial);
-        cloud.position.set(
-          Math.random() * 60 - 30,
-          Math.random() * 5 - 10,
-          Math.random() * 60 - 30
-        );
+        cloud.position.set(Math.random() * 60 - 30, Math.random() * 5 - 10, Math.random() * 60 - 30);
         const scale = Math.random() * 3 + 2;
         cloud.scale.set(scale, scale, 1);
         scene.add(cloud);
         clouds.push(cloud);
       }
     }
-  
+
     function createCloudTexture() {
       const canvas = document.createElement('canvas');
-      canvas.width = 128;
-      canvas.height = 128;
+      canvas.width = 128; canvas.height = 128;
       const context = canvas.getContext('2d');
-  
       context.fillStyle = 'rgba(255, 255, 255, 0)';
       context.fillRect(0, 0, 128, 128);
-  
       context.fillStyle = 'rgba(255, 255, 255, 0.8)';
       context.beginPath();
-      context.arc(64, 64, 32,  0, Math.PI * 2);
+      context.arc(64, 64, 32, 0, Math.PI * 2);
       context.arc(45, 64, 25, 0, Math.PI * 2);
       context.arc(83, 64, 25, 0, Math.PI * 2);
       context.fill();
-  
-      const texture = new THREE.CanvasTexture(canvas);
-      return texture;
+      return new THREE.CanvasTexture(canvas);
     }
-  
+
+    /* ============================================================
+       INPUT
+       ============================================================ */
+
     function onKeyDown(event) {
       switch (event.code) {
-        case 'KeyW':
-        case 'ArrowUp':
-          moveForward = true;
-          break;
-        case 'KeyS':
-        case 'ArrowDown':
-          moveBackward = true;
-          break;
-        case 'KeyA':
-        case 'ArrowLeft':
-          moveLeft = true;
-          break;
-        case 'KeyD':
-        case 'ArrowRight':
-          moveRight = true;
-          break;
+        case 'KeyW': case 'ArrowUp': moveForward = true; break;
+        case 'KeyS': case 'ArrowDown': moveBackward = true; break;
+        case 'KeyA': case 'ArrowLeft': moveLeft = true; break;
+        case 'KeyD': case 'ArrowRight': moveRight = true; break;
+        case 'Escape': if (gameStarted && !gameWon) togglePause(); break;
       }
     }
-  
+
     function onKeyUp(event) {
       switch (event.code) {
-        case 'KeyW':
-        case 'ArrowUp':
-          moveForward = false;
-          break;
-        case 'KeyS':
-        case 'ArrowDown':
-          moveBackward = false;
-          break;
-        case 'KeyA':
-        case 'ArrowLeft':
-          moveLeft = false;
-          break;
-        case 'KeyD':
-        case 'ArrowRight':
-          moveRight = false;
-          break;
+        case 'KeyW': case 'ArrowUp': moveForward = false; break;
+        case 'KeyS': case 'ArrowDown': moveBackward = false; break;
+        case 'KeyA': case 'ArrowLeft': moveLeft = false; break;
+        case 'KeyD': case 'ArrowRight': moveRight = false; break;
       }
     }
-  
+
+    function setupJoystick() {
+      const base = document.getElementById('joystickBase');
+      const knob = document.getElementById('joystickKnob');
+      const radius = 45;
+      let activePointerId = null;
+      let baseRect = null;
+
+      function reset() {
+        knob.style.transform = 'translate(0px, 0px)';
+        joystickVector.x = 0;
+        joystickVector.z = 0;
+      }
+
+      base.addEventListener('pointerdown', (e) => {
+        activePointerId = e.pointerId;
+        baseRect = base.getBoundingClientRect();
+        base.setPointerCapture(e.pointerId);
+        updateFromEvent(e);
+      });
+      base.addEventListener('pointermove', (e) => {
+        if (e.pointerId !== activePointerId) return;
+        updateFromEvent(e);
+      });
+      function endPointer(e) {
+        if (e.pointerId !== activePointerId) return;
+        activePointerId = null;
+        reset();
+      }
+      base.addEventListener('pointerup', endPointer);
+      base.addEventListener('pointercancel', endPointer);
+
+      function updateFromEvent(e) {
+        const cx = baseRect.left + baseRect.width / 2;
+        const cy = baseRect.top + baseRect.height / 2;
+        let dx = e.clientX - cx;
+        let dy = e.clientY - cy;
+        const len = Math.sqrt(dx * dx + dy * dy);
+        if (len > radius) { dx = dx / len * radius; dy = dy / len * radius; }
+        knob.style.transform = `translate(${dx}px, ${dy}px)`;
+        joystickVector.x = dx / radius;
+        joystickVector.z = dy / radius;
+      }
+    }
+
+    /* ============================================================
+       PHYSICS / GAMEPLAY
+       ============================================================ */
+
     function handleCollision(position, wall) {
       const ballRadius = 0.5;
       const wallBox = new THREE.Box3().setFromObject(wall);
       const closestPoint = wallBox.clampPoint(position, new THREE.Vector3());
       const normal = position.clone().sub(closestPoint).normalize();
       const penetrationDepth = ballRadius - position.distanceTo(closestPoint);
-  
       if (penetrationDepth > 0) {
         position.add(normal.multiplyScalar(penetrationDepth));
-        
-        // Project velocity onto the wall plane
         const dot = velocity.dot(normal);
         velocity.sub(normal.multiplyScalar(dot));
       }
-  
       return position;
     }
-  
+
     function checkCollision(position) {
       let collided = false;
-  
       for (let wall of walls) {
         const wallBox = new THREE.Box3().setFromObject(wall);
         const sphere = new THREE.Sphere(position, 0.5);
-  
         if (wallBox.intersectsSphere(sphere)) {
           position = handleCollision(position, wall);
           collided = true;
         }
       }
-  
       return { collided, position };
     }
-  
+
     function checkCoinCollision() {
       const ballRadius = 0.5;
       for (let i = coins.length - 1; i >= 0; i--) {
@@ -791,7 +969,7 @@
         }
       }
     }
-  
+
     function checkHoleCollision() {
       const ballRadius = 0.5;
       for (let hole of holes) {
@@ -803,64 +981,64 @@
       }
       return false;
     }
-  
+
     function resetLevel() {
-      ball.position.set(-9, 0.5, -9);
-      velocity.set(0, 0, 0);
-      loadLevel(currentLevel);
+      loadLevel(currentLevel, currentSeed);
     }
-  
+
     function updateCoinCounter() {
       document.getElementById('coinCount').textContent = `Coins Remaining: ${coinsRemaining}`;
     }
-  
+
     function checkWinCondition() {
-      let winPosition;
-      switch(currentLevel) {
-        case 1:
-          winPosition = new THREE.Vector3(-8, 0, 8);
-          break;
-        case 2:
-          winPosition = new THREE.Vector3(8, 0, -8);
-          break;
-        case 3:
-          winPosition = new THREE.Vector3(0, 0, 0);
-          break;
-        case 4:
-          winPosition = new THREE.Vector3(9, 0, 9);
-          break;
-        case 5:
-          winPosition = new THREE.Vector3(9, 0, -9);
-          break;
-      }
-      
+      if (!currentLevelConfig) return;
+      const winPosition = currentLevelConfig.winPos;
       if (ball.position.distanceTo(winPosition) < 1 && coinsRemaining === 0) {
-        if (currentLevel < totalLevels) {
+        if (endlessMode || currentLevel < totalLevels) {
+          saveBestTime(currentLevel, elapsedMillis());
           currentLevel++;
           sounds.levelComplete.play();
           loadLevel(currentLevel);
+          startTime = Date.now();
         } else if (!gameWon) {
+          saveBestTime(currentLevel, elapsedMillis());
           gameWon = true;
           showWinScreen();
         }
       }
     }
-  
+
+    function elapsedMillis() {
+      return Date.now() - startTime;
+    }
+
+    function saveBestTime(level, ms) {
+      try {
+        const key = `bestTime_level_${level}`;
+        const existing = parseInt(localStorage.getItem(key) || '0', 10);
+        if (!existing || ms < existing) localStorage.setItem(key, String(ms));
+      } catch (e) {}
+    }
+
+    function getBestTime(level) {
+      try {
+        const v = localStorage.getItem(`bestTime_level_${level}`);
+        if (!v) return null;
+        const ms = parseInt(v, 10);
+        const m = Math.floor(ms / 60000);
+        const s = Math.floor((ms % 60000) / 1000);
+        return `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+      } catch (e) { return null; }
+    }
+
     function showWinScreen() {
       sounds.backgroundMusic.stop();
       sounds.winSound.play();
-      
-      // Show win message
       const winMessage = document.getElementById('winMessage');
       winMessage.style.display = 'block';
-      setTimeout(() => {
-        winMessage.style.opacity = 1;
-      }, 100);
-  
-      // Create fireworks
+      setTimeout(() => { winMessage.style.opacity = 1; }, 100);
       createFireworks();
-  
-      // Rotate camera around the ball
+
       const radius = 10;
       let angle = 0;
       function rotateCameraWin() {
@@ -873,11 +1051,9 @@
         }
       }
       rotateCameraWin();
-  
-      // Stop the timer
       clearInterval(timerInterval);
     }
-  
+
     function createFireworks() {
       const fireworksContainer = document.getElementById('fireworks');
       for (let i = 0; i < 100; i++) {
@@ -891,117 +1067,217 @@
           firework.style.left = Math.random() * 100 + '%';
           firework.style.top = Math.random() * 100 + '%';
           fireworksContainer.appendChild(firework);
-  
           animateFirework(firework);
         }, Math.random() * 5000);
       }
     }
-  
+
     function animateFirework(firework) {
-      let opacity = 1;
-      let scale = 1;
-      let frame = 0;
-  
-      function animate() {
+      let opacity = 1, scale = 1, frame = 0;
+      function step() {
         frame++;
         opacity -= 0.01;
         scale += 0.02;
         firework.style.opacity = opacity;
         firework.style.transform = `scale(${scale})`;
-  
-        if (frame < 100) {
-          requestAnimationFrame(animate);
-        } else {
-          firework.remove();
-        }
+        if (frame < 100) requestAnimationFrame(step);
+        else firework.remove();
       }
-  
-      animate();
+      step();
     }
-  
+
     function getRandomColor() {
       const letters = '0123456789ABCDEF';
       let color = '#';
-      for (let i = 0; i < 6; i++) {
-        color += letters[Math.floor(Math.random() * 16)];
-      }
+      for (let i = 0; i < 6; i++) color += letters[Math.floor(Math.random() * 16)];
       return color;
     }
-  
+
+    /* ============================================================
+       TIMER
+       ============================================================ */
+
+    function startTimer() {
+      startTime = Date.now();
+      timerInterval = setInterval(updateTimer, 30);
+    }
+
+    function updateTimer() {
+      if (paused) return;
+      const elapsedTime = new Date(Date.now() - startTime);
+      const minutes = String(elapsedTime.getUTCMinutes()).padStart(2, '0');
+      const seconds = String(elapsedTime.getUTCSeconds()).padStart(2, '0');
+      const milliseconds = String(elapsedTime.getUTCMilliseconds()).padStart(3, '0');
+      document.getElementById('timer').textContent = `Time: ${minutes}:${seconds}.${milliseconds}`;
+    }
+
+    /* ============================================================
+       MAIN LOOP
+       ============================================================ */
+
     function animate() {
       requestAnimationFrame(animate);
-  
+      if (!gameStarted) return;
+      if (paused || gameWon) { renderer.render(scene, camera); return; }
+
       const delta = 0.016;
       const maxSpeed = 5;
       const friction = 0.98;
-  
-      acceleration.set(0, 0, 0);
-  
-      if (!gameWon) {
-        if (moveForward) acceleration.z -= 1;
-        if (moveBackward) acceleration.z += 1;
-        if (moveLeft) acceleration.x -= 1;
-        if (moveRight) acceleration.x += 1;
-      }
-    
-        acceleration.normalize().multiplyScalar(20);
-    
-        velocity.add(acceleration.multiplyScalar(delta));
-        velocity.multiplyScalar(friction);
-    
-        if (velocity.length() > maxSpeed) {
-          velocity.normalize().multiplyScalar(maxSpeed);
-        }
-    
-        const newPosition = ball.position.clone().add(velocity.clone().multiplyScalar(delta));
-      
-      
+
+      const kx = (moveRight ? 1 : 0) - (moveLeft ? 1 : 0);
+      const kz = (moveBackward ? 1 : 0) - (moveForward ? 1 : 0);
+
+      let ax = kx + joystickVector.x;
+      let az = kz + joystickVector.z;
+      const mag = Math.sqrt(ax * ax + az * az);
+      if (mag > 1) { ax /= mag; az /= mag; }
+      acceleration.set(ax, 0, az);
+      acceleration.multiplyScalar(20);
+
+      velocity.add(acceleration.multiplyScalar(delta));
+      velocity.multiplyScalar(friction);
+      if (velocity.length() > maxSpeed) velocity.normalize().multiplyScalar(maxSpeed);
+
+      const newPosition = ball.position.clone().add(velocity.clone().multiplyScalar(delta));
       const collisionResult = checkCollision(newPosition);
-      if (collisionResult.collided) {
-        ball.position.copy(collisionResult.position);
-      } else {
-        ball.position.copy(newPosition);
-      }
-  
-      // Correct ball rotation
+      if (collisionResult.collided) ball.position.copy(collisionResult.position);
+      else ball.position.copy(newPosition);
+
       const rotationAxis = new THREE.Vector3(velocity.z, 0, -velocity.x).normalize();
       const rotationAngle = velocity.length() * delta / 0.5;
-      ball.quaternion.premultiply(new THREE.Quaternion().setFromAxisAngle(rotationAxis, rotationAngle));
-  
-      if (!gameWon) {
-        const cameraOffset = new THREE.Vector3(0, 5, 7);
-        camera.position.copy(ball.position).add(cameraOffset);
-        camera.lookAt(ball.position);
+      if (!isNaN(rotationAxis.x)) {
+        ball.quaternion.premultiply(new THREE.Quaternion().setFromAxisAngle(rotationAxis, rotationAngle));
       }
-  
-      coins.forEach(coin => {
-        coin.rotation.y += 0.1; // Horizontal spinning
-      });
-  
-      // Animate clouds
+
+      const cameraOffset = new THREE.Vector3(0, 5, 7);
+      camera.position.copy(ball.position).add(cameraOffset);
+      camera.lookAt(ball.position);
+
+      coins.forEach(coin => { coin.rotation.y += 0.1; });
       clouds.forEach(cloud => {
         cloud.position.x += 0.01;
-        if (cloud.position.x > 30) {
-          cloud.position.x = -30;
-        }
+        if (cloud.position.x > 30) cloud.position.x = -30;
       });
-  
+
       checkCoinCollision();
-      if (checkHoleCollision()) {
-        return; // Stop further processing if the ball fell into a hole
-      }
+      if (checkHoleCollision()) { renderer.render(scene, camera); return; }
       checkWinCondition();
-  
+
       renderer.render(scene, camera);
     }
-  
-    window.addEventListener('resize', function() {
-      camera.aspect = window.innerWidth / window.innerHeight;
-      camera.updateProjectionMatrix();
-      renderer.setSize(window.innerWidth, window.innerHeight);
-    });
-  
-    init();
-    alert("On a mobile device, turn on auto-rotate and rotate your device.")
+
+    /* ============================================================
+       PAUSE
+       ============================================================ */
+
+    function togglePause() {
+      paused = !paused;
+      const pauseMenu = document.getElementById('pauseMenu');
+      if (paused) {
+        pausedAt = Date.now();
+        pauseMenu.classList.remove('hidden');
+      } else {
+        startTime += (Date.now() - pausedAt);
+        pauseMenu.classList.add('hidden');
+      }
+    }
+
+    /* ============================================================
+       MENUS / GAME FLOW
+       ============================================================ */
+
+    function setControlScheme(scheme) {
+      controlScheme = scheme;
+      document.getElementById('pcBtn').classList.toggle('selected', scheme === 'pc');
+      document.getElementById('mobileBtn').classList.toggle('selected', scheme === 'mobile');
+      const joystick = document.getElementById('joystickBase');
+      const mobilePause = document.getElementById('mobilePauseBtn');
+      if (scheme === 'mobile') {
+        joystick.classList.remove('hidden');
+        mobilePause.classList.remove('hidden');
+      } else {
+        joystick.classList.add('hidden');
+        mobilePause.classList.add('hidden');
+        joystickVector.x = 0; joystickVector.z = 0;
+      }
+    }
+
+    function buildLevelGrid() {
+      const grid = document.getElementById('levelGrid');
+      grid.innerHTML = '';
+      for (let lvl = 1; lvl <= totalLevels; lvl++) {
+        const diff = difficultyLabel(lvl);
+        const tile = document.createElement('div');
+        tile.className = `levelTile ${diff.cls}`;
+        const best = getBestTime(lvl);
+        tile.innerHTML = `<div>${lvl}</div><span class="diff">${diff.text}</span>${best ? `<span class="best">${best}</span>` : ''}`;
+        tile.addEventListener('click', () => startGame(lvl, false));
+        grid.appendChild(tile);
+      }
+      const endlessTile = document.createElement('div');
+      endlessTile.id = 'endlessTile';
+      endlessTile.className = 'levelTile';
+      endlessTile.innerHTML = `<div>♾ Endless</div><span class="diff">Infinite generated levels</span>`;
+      endlessTile.addEventListener('click', () => startGame(1, true));
+      grid.appendChild(endlessTile);
+    }
+
+    function showOverlay(id) {
+      document.querySelectorAll('.overlay').forEach(el => el.classList.add('hidden'));
+      document.getElementById(id).classList.remove('hidden');
+    }
+
+    function hideAllOverlays() {
+      document.querySelectorAll('.overlay').forEach(el => el.classList.add('hidden'));
+    }
+
+    function startGame(level, isEndless) {
+      endlessMode = isEndless;
+      currentLevel = level;
+      gameWon = false;
+      hideAllOverlays();
+      document.getElementById('winMessage').style.display = 'none';
+      document.getElementById('winMessage').style.opacity = 0;
+
+      initRenderer();
+      gameStarted = true;
+      loadLevel(currentLevel);
+      startTimer();
+
+      setTimeout(() => { sounds.backgroundMusic.play(); }, 1500);
+    }
+
+    function returnToMainMenu() {
+      gameStarted = false;
+      gameWon = false;
+      paused = false;
+      clearInterval(timerInterval);
+      sounds.backgroundMusic.stop();
+      document.getElementById('winMessage').style.display = 'none';
+      document.getElementById('winMessage').style.opacity = 0;
+      showOverlay('mainMenu');
+    }
+
+    /* ---------------- Wiring ---------------- */
+
+    document.getElementById('pcBtn').addEventListener('click', () => setControlScheme('pc'));
+    document.getElementById('mobileBtn').addEventListener('click', () => setControlScheme('mobile'));
+    document.getElementById('playBtn').addEventListener('click', () => startGame(1, false));
+    document.getElementById('endlessBtn').addEventListener('click', () => startGame(1, true));
+    document.getElementById('levelSelectBtn').addEventListener('click', () => { buildLevelGrid(); showOverlay('levelSelectMenu'); });
+    document.getElementById('backToMenuBtn').addEventListener('click', () => showOverlay('mainMenu'));
+
+    document.getElementById('pauseBtn').addEventListener('click', togglePause);
+    document.getElementById('mobilePauseBtn').addEventListener('click', togglePause);
+    document.getElementById('resumeBtn').addEventListener('click', togglePause);
+    document.getElementById('restartBtn').addEventListener('click', () => { togglePause(); resetLevel(); startTime = Date.now(); });
+    document.getElementById('regenBtnMenu').addEventListener('click', () => { togglePause(); loadLevel(currentLevel, Date.now()); startTime = Date.now(); });
+    document.getElementById('regenBtn').addEventListener('click', () => { loadLevel(currentLevel, Date.now()); startTime = Date.now(); });
+    document.getElementById('pauseLevelSelectBtn').addEventListener('click', () => { paused = false; buildLevelGrid(); showOverlay('levelSelectMenu'); });
+    document.getElementById('mainMenuBtn').addEventListener('click', () => { paused = false; returnToMainMenu(); });
+    document.getElementById('winMainMenuBtn').addEventListener('click', returnToMainMenu);
+
+    setupJoystick();
+    showOverlay('mainMenu');
   </script>
   </body></html>
